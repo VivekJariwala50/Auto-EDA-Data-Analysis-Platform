@@ -119,8 +119,14 @@ export async function streamDataInsights(
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error((err as any).message || `HTTP ${response.status}`);
+    let errMsg = `HTTP ${response.status}`;
+    try {
+      const err = await response.json();
+      if (err && err.message) errMsg = err.message;
+    } catch (e) {
+      // Ignore json parse error
+    }
+    throw new Error(errMsg);
   }
 
   if (!response.body) throw new Error("No response body from server");

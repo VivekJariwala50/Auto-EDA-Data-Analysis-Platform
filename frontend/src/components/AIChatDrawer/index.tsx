@@ -23,12 +23,9 @@ const SUGGESTION_TEMPLATES = [
 export const AIChatDrawer: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(true);
   const dataset = useCsvStore((s) => s.dataset);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const suggestions = useMemo(() => {
     if (!dataset) return [];
@@ -44,14 +41,12 @@ export const AIChatDrawer: React.FC = () => {
   }, [messages, loading]);
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 250);
-  }, [open]);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
   const sendMessage = async (question: string) => {
     const q = question.trim();
     if (!q || loading || !dataset) return;
-    setInput("");
-    setShowSuggestions(false); // collapse suggestions after first message
     setMessages((p) => [...p, { role: "user", text: q }]);
     setMessages((p) => [...p, { role: "ai", text: "" }]);
     setLoading(true);
@@ -65,31 +60,19 @@ export const AIChatDrawer: React.FC = () => {
           return next;
         });
       });
-    } catch {
+    } catch (error: any) {
       setMessages((prev) => {
         const next = [...prev];
-        next[next.length - 1].text =
-          "⚠️ Could not reach AI service. Check that the backend is running and your API key is set.";
+        next[next.length - 1].text = `⚠️ ${error.message || "Could not reach AI service."}`;
         return next;
       });
     } finally {
       setLoading(false);
-      // Re-focus input so user can immediately type a follow-up
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage(input);
     }
   };
 
   const handleReset = () => {
     setMessages([]);
-    setShowSuggestions(true);
-    setInput("");
   };
 
   return (
@@ -187,64 +170,27 @@ export const AIChatDrawer: React.FC = () => {
               <div ref={bottomRef} />
             </div>
 
-            {/* Suggestions — always accessible, collapsible */}
+            {/* Suggestions — Permanent at bottom */}
             {suggestions.length > 0 && (
-              <div className="ai-suggestions">
-                <button
-                  className="ai-suggestions-toggle"
-                  onClick={() => setShowSuggestions((s) => !s)}
-                >
+              <div className="ai-suggestions-bottom">
+                <div className="ai-suggestions-header">
                   <Lightbulb size={13} />
-                  <span>Quick prompts</span>
-                  <span className="ai-suggestions-arrow">{showSuggestions ? "▲" : "▼"}</span>
-                </button>
-                <AnimatePresence initial={false}>
-                  {showSuggestions && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2, ease: "easeInOut" }}
-                      style={{ overflow: "hidden" }}
+                  <span>Choose a prompt</span>
+                </div>
+                <div className="ai-suggestions-list">
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      className="ai-suggestion-chip"
+                      onClick={() => sendMessage(s)}
+                      disabled={loading}
                     >
-                      <div className="ai-suggestions-list">
-                        {suggestions.map((s, i) => (
-                          <button
-                            key={i}
-                            className="ai-suggestion-chip"
-                            onClick={() => sendMessage(s)}
-                            disabled={loading}
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-
-            {/* Input — always visible, always usable */}
-            <div className="ai-input-area">
-              <input
-                ref={inputRef}
-                className="ai-input"
-                placeholder={loading ? "AI is thinking…" : "Ask anything about your data…"}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={loading}
-              />
-              <button
-                className="btn btn-primary ai-send-btn"
-                onClick={() => sendMessage(input)}
-                disabled={loading || !input.trim()}
-                title="Send (Enter)"
-              >
-                <Send size={16} />
-              </button>
-            </div>
           </motion.aside>
         )}
       </AnimatePresence>
