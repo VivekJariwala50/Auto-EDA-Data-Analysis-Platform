@@ -8,6 +8,10 @@
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![Google Gemini](https://img.shields.io/badge/Powered_by-Gemini_2.5_Flash-8E75B2?style=for-the-badge)
 
+## 🎥 Demo
+
+![Auto-EDA Demo](./autoEDA-demo.mp4)
+
 ## ✨ Key Features
 
 - **🚀 High-Performance Data Processing:** Utilises dedicated Web Workers to parse up to 100MB of CSV data (250,000+ rows) without freezing the UI.
