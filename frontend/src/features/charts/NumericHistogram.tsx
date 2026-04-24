@@ -24,10 +24,17 @@ export function NumericHistogram({
   column: string;
   rows: any[];
 }) {
-  const values = rows.map((r) => +r[column]).filter((v) => !isNaN(v));
-  const bins = Math.min(20, Math.ceil(Math.sqrt(values.length)));
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const values = rows.map((r) => +r[column]).filter((v) => !isNaN(v) && isFinite(v));
+  if (values.length === 0) return null;
+
+  // Safe min/max — Math.min(...bigArray) causes "Maximum call stack size exceeded"
+  let min = values[0];
+  let max = values[0];
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] < min) min = values[i];
+    if (values[i] > max) max = values[i];
+  }
+  const bins = Math.max(10, Math.min(40, Math.ceil(Math.sqrt(values.length))));
   const step = (max - min) / bins || 1;
 
   const counts = Array(bins).fill(0);

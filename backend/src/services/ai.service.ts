@@ -17,8 +17,8 @@ export const generateAiInsightStream = async (
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // Use a reliable model — skip dynamic discovery which can fail
-  const model = "gemini-1.5-flash";
+  // Use the best model available for this key
+  const model = "gemini-2.5-flash";
 
   const colSummary = dataset.columns
     .map((c: any) => `${c.name} (${c.type})`)

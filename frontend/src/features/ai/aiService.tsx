@@ -19,9 +19,17 @@ const calculateStats = (dataset: CsvDataset) => {
       const n = nums.length;
       const sum = nums.reduce((a, b) => a + b, 0);
       const avg = sum / n;
-      const sorted = [...nums].sort((a, b) => a - b);
-      const min = sorted[0];
-      const max = sorted[n - 1];
+
+      // Safe min/max — Math.min(...bigArray) stack overflows at ~100k+ elements
+      let min = nums[0];
+      let max = nums[0];
+      for (let i = 1; i < n; i++) {
+        if (nums[i] < min) min = nums[i];
+        if (nums[i] > max) max = nums[i];
+      }
+
+      // Safe sort for median/IQR (uses TypedArray-style avoid)
+      const sorted = Float64Array.from(nums).sort();
       const median = n % 2 === 0
         ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
         : sorted[Math.floor(n / 2)];
