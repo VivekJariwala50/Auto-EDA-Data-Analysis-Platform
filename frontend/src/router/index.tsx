@@ -2,23 +2,19 @@ import { createBrowserRouter, type RouteObject } from "react-router-dom";
 import { lazy, Suspense, type ReactNode, type FC } from "react";
 import { RouteErrorPage } from "../components/ErrorBoundary";
 
+import { Skeleton, Space } from "antd";
+
 const Loader = () => (
   <div style={{
     minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    padding: "2rem",
     background: "var(--bg)",
   }}>
-    <div style={{
-      width: 32,
-      height: 32,
-      border: "3px solid var(--border)",
-      borderTopColor: "var(--brand)",
-      borderRadius: "50%",
-      animation: "spin 0.7s linear infinite",
-    }} />
-    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <Space direction="vertical" size="large" style={{ display: 'flex' }}>
+      <Skeleton active avatar paragraph={{ rows: 2 }} />
+      <Skeleton active paragraph={{ rows: 6 }} />
+      <Skeleton active paragraph={{ rows: 4 }} />
+    </Space>
   </div>
 );
 
