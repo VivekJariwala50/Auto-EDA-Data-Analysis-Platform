@@ -10,7 +10,7 @@
 
 ## 🎥 Demo
 
-![Auto-EDA Demo](./autoEDA-demo.mp4)
+![Auto-EDA Demo](./autoEDA-demo.gif)
 
 ## ✨ Key Features
 
