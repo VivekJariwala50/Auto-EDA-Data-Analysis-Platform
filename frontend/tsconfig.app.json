@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "jsx": "react-jsx",
+
+    /* Strict TypeScript */
+    "strict": true,                // enables all strict flags
+    "noImplicitAny": true,         // catch variables without types
+    "strictNullChecks": true,      // null & undefined checks
+    "strictFunctionTypes": true,   // function parameter checking
+    "strictBindCallApply": true,   // check bind/call/apply usage
+    "noImplicitThis": true,        // catch untyped this
+    "alwaysStrict": true,          // parse in strict mode
+
+    /* Linting & Safety */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    /* Module & Bundler */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "skipLibCheck": true,          
+
+    /* Optional: type-safe imports */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/env.d.ts"]
+}
