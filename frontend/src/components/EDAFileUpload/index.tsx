@@ -1,67 +1,99 @@
-import type { FC } from "react";
-import { Upload, message } from "antd";
-import type { UploadProps } from "antd";
+import { useState, useRef, useCallback, type FC } from "react";
+import { UploadCloud, FileCheck } from "lucide-react";
 import { parseCsvFile } from "../../features/csv/csvParser";
 import { useCsvStore } from "../../store/useCsvStore";
+import "./EDAFileUpload.css";
 
-const { Dragger } = Upload;
+interface Props { className?: string; }
 
-interface EDAFileUploadProps {
-  className?: string;
-}
+export const EDAFileUpload: FC<Props> = ({ className = "" }) => {
+  const setDataset = useCsvStore((s) => s.setDataset);
+  const [dragging, setDragging] = useState(false);
+  const [status, setStatus] = useState<"idle" | "parsing" | "done" | "error">("idle");
+  const [fileName, setFileName] = useState("");
+  const [rowCount, setRowCount] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-export const EDAFileUpload: FC<EDAFileUploadProps> = ({ className = "" }) => {
-  const setDataset = useCsvStore((state) => state.setDataset);
+  const processFile = useCallback(async (file: File) => {
+    if (!file.name.endsWith(".csv")) {
+      setStatus("error");
+      setFileName("Only .csv files are supported");
+      return;
+    }
+    if (file.size > 100 * 1024 * 1024) {
+      setStatus("error");
+      setFileName("File too large (max 100 MB)");
+      return;
+    }
+    setFileName(file.name);
+    setStatus("parsing");
+    try {
+      const dataset = await parseCsvFile(file);
+      setDataset(dataset);
+      setRowCount(dataset.rowCount);
+      setStatus("done");
+    } catch {
+      setStatus("error");
+      setFileName("Parse failed – check file format");
+    }
+  }, [setDataset]);
 
-  const props: UploadProps = {
-    accept: ".csv",
-    multiple: false,
-    showUploadList: false,
-    className: `eda-dragger-base ${className}`,
-    async beforeUpload(file) {
-      // Validate File Type
-      const isCsv = file.type === "text/csv" || file.name.endsWith(".csv");
-      if (!isCsv) {
-        message.error("Only CSV files are supported.");
-        return Upload.LIST_IGNORE;
-      }
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  }, [processFile]);
 
-      // Size Validation
-      const isLt25M = file.size / 1024 / 1024 < 25;
-      if (!isLt25M) {
-        message.error(
-          "File is too large! Please upload a CSV smaller than 25MB.",
-        );
-        return Upload.LIST_IGNORE;
-      }
-
-      // Optimized Parsing
-      try {
-        const dataset = await parseCsvFile(file);
-        setDataset(dataset);
-        message.success(`Parsed ${dataset.rowCount} rows successfully.`);
-      } catch (error) {
-        console.error("Parse Error:", error);
-        message.error(
-          "Failed to parse CSV. The file may be corrupted or incorrectly formatted.",
-        );
-      }
-
-      return false;
-    },
+  const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+    e.target.value = "";
   };
 
   return (
-    <Dragger {...props}>
-      <div className="eda-upload-content p-4">
-        <p className="upload-title h4 fw-bold">Upload your dataset</p>
-        <p className="upload-hint text-muted">
-          Drag & drop a <strong>.csv</strong> file here.
-        </p>
-        <div className="mt-3">
-          <span className="badge bg-light text-secondary border">MAX 25MB</span>
+    <div
+      className={`eda-dropzone ${dragging ? "dragging" : ""} ${status === "done" ? "done" : ""} ${status === "error" ? "error" : ""} ${className}`}
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={onDrop}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".csv"
+        style={{ display: "none" }}
+        onChange={onInputChange}
+      />
+
+      {status === "done" ? (
+        <div className="eda-status-row">
+          <FileCheck size={22} className="eda-icon-success" />
+          <div>
+            <p className="eda-file-name">{fileName}</p>
+            <p className="eda-file-meta">{rowCount.toLocaleString()} rows parsed · Click to replace</p>
+          </div>
         </div>
-      </div>
-    </Dragger>
+      ) : status === "parsing" ? (
+        <div className="eda-status-row">
+          <div className="eda-spinner" />
+          <p className="eda-parsing-label">Parsing {fileName}…</p>
+        </div>
+      ) : (
+        <>
+          <UploadCloud size={32} className={`eda-upload-icon ${status === "error" ? "eda-icon-error" : ""}`} />
+          <p className="eda-upload-title">
+            {status === "error" ? fileName : "Drop your CSV here"}
+          </p>
+          <p className="eda-upload-hint">
+            {status === "error" ? "Click to try again" : "or click to browse · max 100 MB"}
+          </p>
+        </>
+      )}
+    </div>
   );
 };

@@ -6,17 +6,16 @@ import {
   BarElement,
   Tooltip,
   Legend,
-  Title,
 } from "chart.js";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Tooltip,
-  Legend,
-  Title,
-);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+
+const CHART_COLORS = {
+  bar: "rgba(37, 99, 235, 0.75)",
+  barHover: "rgba(37, 99, 235, 1)",
+  gridLine: "rgba(0,0,0,0.06)",
+  tick: "#6b7280",
+};
 
 export function NumericHistogram({
   column,
@@ -26,11 +25,10 @@ export function NumericHistogram({
   rows: any[];
 }) {
   const values = rows.map((r) => +r[column]).filter((v) => !isNaN(v));
-
-  const bins = 20;
+  const bins = Math.min(20, Math.ceil(Math.sqrt(values.length)));
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const step = (max - min) / bins;
+  const step = (max - min) / bins || 1;
 
   const counts = Array(bins).fill(0);
   values.forEach((v) => {
@@ -38,7 +36,9 @@ export function NumericHistogram({
     counts[idx]++;
   });
 
-  const labels = counts.map((_, i) => `${(min + i * step).toFixed(0)}`);
+  const labels = counts.map((_, i) =>
+    (min + i * step).toLocaleString(undefined, { maximumFractionDigits: 2 })
+  );
 
   return (
     <Bar
@@ -48,27 +48,25 @@ export function NumericHistogram({
           {
             label: column,
             data: counts,
-            backgroundColor: "#4f46e5",
+            backgroundColor: CHART_COLORS.bar,
+            hoverBackgroundColor: CHART_COLORS.barHover,
+            borderRadius: 4,
+            borderSkipped: false,
           },
         ],
       }}
       options={{
         responsive: true,
-        plugins: {
-          legend: { display: false },
-        },
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
         scales: {
           x: {
-            title: {
-              display: true,
-              text: column,
-            },
+            grid: { color: CHART_COLORS.gridLine },
+            ticks: { color: CHART_COLORS.tick, font: { size: 11 }, maxTicksLimit: 8 },
           },
           y: {
-            title: {
-              display: true,
-              text: "Count",
-            },
+            grid: { color: CHART_COLORS.gridLine },
+            ticks: { color: CHART_COLORS.tick, font: { size: 11 } },
           },
         },
       }}

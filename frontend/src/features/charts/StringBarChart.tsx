@@ -21,7 +21,7 @@ export function StringBarChart({
   column,
   numericCol,
   rows,
-  color = "#6366f1",
+  color = "rgba(37, 99, 235, 0.75)",
 }: StringBarChartProps) {
   const totals: Record<string, number> = {};
 
@@ -38,10 +38,8 @@ export function StringBarChart({
 
   if (sorted.length === 0) {
     return (
-      <div className="d-flex flex-column align-items-center justify-content-center h-100 text-muted bg-light rounded">
-        <p className="small mb-0">
-          No valid relational data found for these columns.
-        </p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-muted)", fontSize: "0.875rem" }}>
+        No valid data for these columns.
       </div>
     );
   }
@@ -63,6 +61,10 @@ export function StringBarChart({
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "#6b7280", font: { size: 11 } }, grid: { color: "rgba(0,0,0,0.05)" } },
+          y: { ticks: { color: "#6b7280", font: { size: 11 } }, grid: { color: "rgba(0,0,0,0.05)" } },
+        },
       }}
     />
   );

@@ -32,6 +32,7 @@ export function DateLineChart({
   rows: any[];
   color?: string;
 }) {
+  const BRAND = "#2563eb";
   const map = new Map<string, number[]>();
 
   rows.forEach((r) => {
@@ -70,32 +71,29 @@ export function DateLineChart({
           {
             label: numericCol,
             data: values,
-            borderColor: "#22c55e",
-            tension: 0.3,
+            borderColor: BRAND,
+            tension: 0.35,
             pointRadius: 2,
-            backgroundColor: `${color}33`,
+            pointHoverRadius: 4,
+            backgroundColor: `rgba(37,99,235,0.1)`,
+            fill: true,
           },
         ],
       }}
       options={{
         responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
         scales: {
           x: {
             type: "time",
-            time: {
-              unit: "day",
-              tooltipFormat: "PP",
-            },
-            title: {
-              display: true,
-              text: dateCol,
-            },
+            time: { unit: "day", tooltipFormat: "PP" },
+            ticks: { color: "#6b7280", font: { size: 11 }, maxTicksLimit: 6 },
+            grid: { color: "rgba(0,0,0,0.05)" },
           },
           y: {
-            title: {
-              display: true,
-              text: numericCol,
-            },
+            ticks: { color: "#6b7280", font: { size: 11 } },
+            grid: { color: "rgba(0,0,0,0.05)" },
           },
         },
       }}

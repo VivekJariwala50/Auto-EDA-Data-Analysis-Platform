@@ -1,206 +1,225 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { Drawer, Button, List, Spin, Tag, Typography } from "antd";
-import { RobotOutlined, BulbOutlined, RedoOutlined } from "@ant-design/icons";
+import { motion, AnimatePresence } from "framer-motion";
+import { Bot, X, Sparkles, RotateCcw, Send, ChevronDown } from "lucide-react";
 import { useCsvStore } from "../../store/useCsvStore";
 import { streamDataInsights } from "../../features/ai/aiService";
+import "./AIChatDrawer.css";
 
-const { Text } = Typography;
+interface Message {
+  role: "user" | "ai";
+  text: string;
+}
+
+const SUGGESTION_TEMPLATES = [
+  (num: string) => `What is the distribution of ${num}?`,
+  (num: string) => `Identify outliers in ${num} and explain their impact.`,
+  (_: string, str: string) => `What are the top values in ${str}?`,
+  (num: string) => `What business insights can I draw from ${num}?`,
+  () => "Summarize the key trends and anomalies in this dataset.",
+  () => "What machine learning models could be built on this data?",
+];
 
 export const AIChatDrawer: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState<{ role: string; text: string }[]>([]);
-
-  const dataset = useCsvStore((state) => state.dataset);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const dataset = useCsvStore((s) => s.dataset);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const suggestions = useMemo(() => {
     if (!dataset) return [];
-
-    const cols = dataset.columns;
-    const numeric = cols.filter((c) => c.type === "number").map((c) => c.name);
-    const dates = cols.filter((c) => c.type === "date").map((c) => c.name);
-    const strings = cols.filter((c) => c.type === "string").map((c) => c.name);
-
-    const qs: string[] = [];
-
-    // Trend Analysis
-    if (dates.length > 0 && numeric.length > 0) {
-      qs.push(`How does ${numeric[0]} change over time?`);
-    }
-
-    // Distribution
-    if (numeric.length > 0) {
-      qs.push(`What is the distribution of ${numeric[0]}?`);
-      qs.push(`Identify outliers in ${numeric[0]}.`);
-    }
-
-    // Categorical Analysis
-    if (strings.length > 0) {
-      qs.push(`What are the most common values in ${strings[0]}?`);
-    }
-
-    // General
-    qs.push("Summarize the key trends in this dataset.");
-
-    return qs.slice(0, 5);
+    const num = dataset.columns.find((c) => c.type === "number")?.name ?? "";
+    const str = dataset.columns.find((c) => c.type === "string")?.name ?? "";
+    return SUGGESTION_TEMPLATES.map((fn) => fn(num, str)).filter(
+      (s) => !s.includes("undefined")
+    ).slice(0, 5);
   }, [dataset]);
 
-  // Auto-scroll logic
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history, loading]);
+  }, [messages, loading]);
 
-  const handleSelectQuestion = async (question: string) => {
-    if (loading || !dataset) return;
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 200);
+  }, [open]);
 
+  const sendMessage = async (question: string) => {
+    if (!question.trim() || loading || !dataset) return;
+    setInput("");
+    setMessages((p) => [...p, { role: "user", text: question }]);
+    setMessages((p) => [...p, { role: "ai", text: "" }]);
     setLoading(true);
-
-    // Add User Selection to Chat
-    setHistory((prev) => [...prev, { role: "user", text: question }]);
-
-    // Add AI Placeholder
-    setHistory((prev) => [...prev, { role: "ai", text: "" }]);
 
     try {
       await streamDataInsights(dataset, question, (chunk) => {
-        setHistory((prev) => {
-          const newHistory = [...prev];
-          const lastIndex = newHistory.length - 1;
-          newHistory[lastIndex] = {
-            ...newHistory[lastIndex],
-            text: newHistory[lastIndex].text + chunk,
-          };
-          return newHistory;
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          next[next.length - 1] = { ...last, text: last.text + chunk };
+          return next;
         });
       });
-    } catch (error) {
-      setHistory((prev) => {
-        const h = [...prev];
-        h[h.length - 1].text = "Error: Could not fetch insights.";
-        return h;
+    } catch {
+      setMessages((prev) => {
+        const next = [...prev];
+        next[next.length - 1].text =
+          "⚠️ Could not reach AI service. Check that the backend is running and your API key is set.";
+        return next;
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReset = () => {
-    setHistory([]);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(input);
+    }
   };
 
   return (
     <>
-      <Button
-        type="primary"
-        shape="circle"
-        icon={<RobotOutlined />}
-        size="large"
-        className="position-fixed bottom-0 end-0 m-4 shadow-lg"
-        style={{ zIndex: 1000, width: "60px", height: "60px" }}
+      {/* FAB */}
+      <button
+        className="ai-fab"
         onClick={() => setOpen(true)}
-      />
-
-      <Drawer
-        title={
-          <div className="d-flex justify-content-between align-items-center w-100">
-            <span>
-              <RobotOutlined className="me-2" /> AI Analyst
-            </span>
-            {history.length > 0 && (
-              <Button
-                type="text"
-                icon={<RedoOutlined />}
-                onClick={handleReset}
-                size="small"
-              >
-                Clear
-              </Button>
-            )}
-          </div>
-        }
-        onClose={() => setOpen(false)}
-        open={open}
-        width={450}
-        styles={{
-          body: { paddingBottom: 0, display: "flex", flexDirection: "column" },
-        }}
+        aria-label="Open AI Analyst"
       >
-        {/* Chat History Area */}
-        <div className="flex-grow-1 overflow-auto p-2">
-          {history.length === 0 && (
-            <div className="text-center text-muted mt-5">
-              <BulbOutlined
-                style={{
-                  fontSize: "48px",
-                  marginBottom: "16px",
-                  color: "#d9d9d9",
-                }}
-              />
-              <p>Select a question below to analyze your data instantly.</p>
-            </div>
-          )}
+        <Bot size={22} />
+        <span className="ai-fab-label">AI Analyst</span>
+      </button>
 
-          <List
-            dataSource={history}
-            split={false}
-            renderItem={(item) => (
-              <div
-                className={`mb-3 p-3 rounded-3 shadow-sm ${
-                  item.role === "ai"
-                    ? "bg-light border text-dark"
-                    : "bg-primary text-white ms-auto"
-                }`}
-                style={{
-                  maxWidth: "85%",
-                  marginLeft: item.role === "user" ? "auto" : "0",
-                  marginRight: item.role === "ai" ? "auto" : "0",
-                  whiteSpace: "pre-line",
-                  fontSize: "0.95rem",
-                }}
-              >
-                {item.text}
-                {loading && item.role === "ai" && item.text === "" && (
-                  <Spin size="small" />
+      {/* Overlay */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="ai-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Drawer */}
+      <AnimatePresence>
+        {open && (
+          <motion.aside
+            className="ai-drawer"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", stiffness: 320, damping: 35 }}
+          >
+            {/* Header */}
+            <div className="ai-drawer-header">
+              <div className="ai-drawer-title-row">
+                <div className="ai-drawer-icon">
+                  <Sparkles size={16} />
+                </div>
+                <span className="ai-drawer-title">AI Data Scientist</span>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                {messages.length > 0 && (
+                  <button
+                    className="btn btn-ghost ai-reset-btn"
+                    onClick={() => setMessages([])}
+                    title="Clear conversation"
+                  >
+                    <RotateCcw size={15} />
+                  </button>
                 )}
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setOpen(false)}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="ai-messages">
+              {messages.length === 0 && (
+                <div className="ai-empty-state">
+                  <div className="ai-empty-icon">
+                    <Bot size={32} />
+                  </div>
+                  <p className="ai-empty-title">Your AI Data Scientist</p>
+                  <p className="ai-empty-desc">
+                    Ask anything about your dataset — distributions, outliers,
+                    trends, correlations, or ML recommendations.
+                  </p>
+                </div>
+              )}
+
+              {messages.map((m, i) => (
+                <div
+                  key={i}
+                  className={`ai-message ${m.role === "user" ? "ai-message-user" : "ai-message-ai"}`}
+                >
+                  {m.role === "ai" && m.text === "" && loading ? (
+                    <div className="ai-typing">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  ) : (
+                    <p className="ai-message-text">{m.text}</p>
+                  )}
+                </div>
+              ))}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Suggestions */}
+            {messages.length === 0 && suggestions.length > 0 && (
+              <div className="ai-suggestions">
+                <p className="ai-suggestions-label">
+                  <ChevronDown size={13} /> Suggested questions
+                </p>
+                <div className="ai-suggestions-list">
+                  {suggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      className="ai-suggestion-chip"
+                      onClick={() => sendMessage(s)}
+                      disabled={loading}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-          />
-          <div ref={bottomRef} />
-        </div>
 
-        <div
-          className="p-3 bg-white border-top shadow-sm"
-          style={{ zIndex: 10 }}
-        >
-          <Text
-            strong
-            className="d-block mb-2 text-muted"
-            style={{ fontSize: "12px" }}
-          >
-            SUGGESTED ANALYTICS
-          </Text>
-          <div className="d-flex flex-wrap gap-2">
-            {suggestions.map((q, i) => (
-              <Tag.CheckableTag
-                key={i}
-                checked={false}
-                onChange={() => handleSelectQuestion(q)}
-                className="px-3 py-2 border rounded-pill user-select-none"
-                style={{
-                  cursor: loading ? "not-allowed" : "pointer",
-                  backgroundColor: "#f0f5ff",
-                  borderColor: "#adc6ff",
-                  color: "#2f54eb",
-                  fontSize: "13px",
-                }}
+            {/* Input */}
+            <div className="ai-input-area">
+              <input
+                ref={inputRef}
+                className="ai-input"
+                placeholder="Ask a question about your data..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={loading}
+              />
+              <button
+                className="btn btn-primary ai-send-btn"
+                onClick={() => sendMessage(input)}
+                disabled={loading || !input.trim()}
               >
-                {q}
-              </Tag.CheckableTag>
-            ))}
-          </div>
-        </div>
-      </Drawer>
+                <Send size={16} />
+              </button>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
     </>
   );
 };

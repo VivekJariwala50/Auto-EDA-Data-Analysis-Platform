@@ -1,17 +1,16 @@
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "../store/ThemeContext";
 
-export function ThemeToggle() {
+export function ThemeToggle({ style }: { style?: React.CSSProperties }) {
   const { theme, toggleTheme } = useTheme();
-
   return (
     <button
+      className="btn btn-ghost"
       onClick={toggleTheme}
-      className="btn-icon"
-      style={{ position: "absolute", top: "20px", right: "20px", zIndex: 100 }}
       aria-label="Toggle theme"
+      style={style}
     >
-      {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+      {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
     </button>
   );
 }
